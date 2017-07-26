@@ -2,7 +2,7 @@
 
 # configs variables
 NAME=accounts-phone # Set the bundle file name
-PACKAGE=okland:accounts-phone
+PACKAGE=newserves:accounts-phone
 DIST_FOLDER=dist # The folder that the bundled files will be copy in to
 
 # run time variables

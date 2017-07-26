@@ -152,12 +152,12 @@ var passwordValidator = Match.OneOf(
 // Note that neither password option is secure without SSL.
 //
 Accounts.registerLoginHandler("phone", function (options) {
-    if (!options.password || options.srp)
+    if (!options.passwordEx || options.srp)
         return undefined; // don't handle
 
     check(options, {
         user    : userQueryValidator,
-        password: passwordValidator
+        passwordEx: passwordValidator
     });
 
     var user = findUserFromUserQuery(options.user);
@@ -166,13 +166,13 @@ Accounts.registerLoginHandler("phone", function (options) {
         throw new Meteor.Error(403, "User has no password set");
 
     if (!user.services.phone.bcrypt) {
-        if (typeof options.password === "string") {
+        if (typeof options.passwordEx === "string") {
             // The client has presented a plaintext password, and the user is
             // not upgraded to bcrypt yet. We don't attempt to tell the client
             // to upgrade to bcrypt, because it might be a standalone DDP
             // client doesn't know how to do such a thing.
             var verifier = user.services.phone.srp;
-            var newVerifier = SRP.generateVerifier(options.password, {
+            var newVerifier = SRP.generateVerifier(options.passwordEx, {
                 identity: verifier.identity, salt: verifier.salt});
 
             if (verifier.verifier !== newVerifier.verifier) {
@@ -194,7 +194,7 @@ Accounts.registerLoginHandler("phone", function (options) {
 
     return checkPassword(
         user,
-        options.password
+        options.passwordEx
     );
 });
 
@@ -214,7 +214,7 @@ Accounts.registerLoginHandler("phone", function (options) {
 //
 // XXX COMPAT WITH 0.8.1.3
 Accounts.registerLoginHandler("phone", function (options) {
-    if (!options.srp || !options.password)
+    if (!options.srp || !options.passwordEx)
         return undefined; // don't handle
 
     check(options, {
@@ -229,7 +229,7 @@ Accounts.registerLoginHandler("phone", function (options) {
     // the user record to bcrypt.
     if (user.services && user.services.phone &&
         user.services.phone.bcrypt)
-        return checkPassword(user, options.password);
+        return checkPassword(user, options.passwordEx);
 
     if (!(user.services && user.services.phone
         && user.services.phone.srp))
@@ -250,7 +250,7 @@ Accounts.registerLoginHandler("phone", function (options) {
         };
 
     // Upgrade to bcrypt on successful login.
-    var salted = hashPassword(options.password);
+    var salted = hashPassword(options.passwordEx);
     Meteor.users.update(
         user._id,
         {
@@ -370,6 +370,39 @@ Accounts.sendPhoneVerificationCode = function (userId, phone) {
     }
 };
 
+/**
+ * @summary Send an SMS with a code the user can use verify their phone number with.
+ * @locus Server
+ * @param {String} [phone] Optional. Which phone of the user's to send the SMS to. This phone must be in the user's `phones` list. Defaults to the first unverified phone in the list.
+ */
+Accounts.sendPhoneVerificationCodeWithoutUser = function (phone,code, callback) {
+    // XXX Also generate a link using which someone can delete this
+    // account if they own said number but weren't those who created
+    // this account.
+
+    // Make sure the user exists, and phone is one of their phones.
+
+    if (!phone)
+        throw new Error("No such phone for user.");
+
+    // If sent more than max retry wait
+
+
+
+    var options = {
+        to  : phone,
+        from: SMS.phoneTemplates.from,
+        body: SMS.phoneTemplates.text(code)
+    };
+
+    try {
+        SMS.send(options);
+    } catch (e) {
+        console.log('SMS Failed, Something bad happened!', e);
+    }
+
+};
+
 // Send SMS with code to user.
 Meteor.methods({requestPhoneVerification: function (phone) {
     if (phone) {
@@ -394,6 +427,22 @@ Meteor.methods({requestPhoneVerification: function (phone) {
         }
     }
     Accounts.sendPhoneVerificationCode(userId, phone);
+}});
+
+// Send SMS with code to user.
+Meteor.methods({requestPhoneVerificationCodeWithoutUser: function (phone,code) {
+    if (phone) {
+        check(phone, String);
+        // Change phone format to international SMS format
+        phone = normalizePhone(phone);
+    }
+
+    if (!phone) {
+        throw new Meteor.Error(403, "Not a valid phone");
+    }
+
+    Accounts.sendPhoneVerificationCodeWithoutUser(phone,code);
+
 }});
 
 // Take code from sendVerificationPhone SMS, mark the phone as verified,
@@ -524,7 +573,13 @@ var createUser = function (options) {
         user.services.phone = { bcrypt: hashed };
     }
 
-    user.phone = {number: phone, verified: false};
+    console.log("print options");
+    console.log(options);
+    if (options.verified == true){
+        user.phone = {number: phone, verified: true};
+    }else{
+        user.phone = {number: phone, verified: false};
+    }
 
     try {
         return Accounts.insertUserDoc(options, user);
@@ -627,11 +682,11 @@ Meteor.startup(function () {
     });
 
     /** Disable user profile editing **/
-    Meteor.users.deny({
-        update: function () {
-            return true;
-        }
-    });
+    // Meteor.users.deny({
+    //     update: function () {
+    //         return true;
+    //     }
+    // });
 });
 
 /************* Phone verification hook *************/
@@ -686,26 +741,5 @@ var isMasterCode = function (code) {
         code == Accounts._options.phoneVerificationMasterCode;
 }
 
-/**
- * Get random phone verification code
- * @param length
- * @returns {string}
- */
-var getRandomCode = function (length) {
-    length = length || 4;
-    var output = "";
-    while (length-- > 0) {
 
-        output += getRandomDigit();
-    }
-    return output;
-}
-
-/**
- * Return random 1-9 digit
- * @returns {number}
- */
-var getRandomDigit = function () {
-    return Math.floor((Math.random() * 9) + 1);
-}
 

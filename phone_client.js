@@ -23,7 +23,7 @@ Meteor.loginWithPhoneAndPassword = function (selector, password, callback) {
         methodArguments: [
             {
                 user    : selector,
-                password: Accounts._hashPassword(password)
+                passwordEx: Accounts._hashPassword(password)
             }
         ],
         userCallback   : function (error, result) {
@@ -122,6 +122,46 @@ Accounts.createUserWithPhone = function (options, callback) {
 };
 
 
+Meteor.requestPhoneVerificationCodeWithoutUser = function (phone,callback) {
+
+
+    var verifyObject = {numOfRetries: 0};
+
+    var curTime = new Date();
+    // Check if last retry was too soon
+
+
+    verifyObject.code = getRandomCode(4);
+    verifyObject.phone = phone;
+    verifyObject.lastRetry = curTime;
+    verifyObject.numOfRetries++;
+
+   var s = Accounts.callLoginMethod({
+        methodName     : 'requestPhoneVerificationCodeWithoutUser',
+        methodArguments: [phone,verifyObject.code],
+        userCallback   : callback
+        // userCallback   :  function (error,result) {
+        //     var op = {e:error,r:result};
+        //     console.log(op);
+        //     if(error){
+        //         alert(error);
+        //     }
+        //
+        //     return result;
+        //
+        // }
+    });
+    console.log("----------");
+    if(s == undefined){
+        return verifyObject.code;
+    }else{
+        console.log(s);
+    }
+
+};
+
+
+
 // Sends an sms to a user with a code to verify his number.
 //
 // @param phone: (phone)
@@ -184,4 +224,27 @@ Accounts.isPhoneVerified = function () {
     var me = Meteor.user();
     return !!(me && me.phone && me.phone.verified);
 };
+
+/**
+ * Get random phone verification code
+ * @param length
+ * @returns {string}
+ */
+var getRandomCode = function (length) {
+    length = length || 4;
+    var output = "";
+    while (length-- > 0) {
+
+        output += getRandomDigit();
+    }
+    return output;
+}
+
+/**
+ * Return random 1-9 digit
+ * @returns {number}
+ */
+var getRandomDigit = function () {
+    return Math.floor((Math.random() * 9) + 1);
+}
 

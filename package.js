@@ -1,10 +1,10 @@
 Package.describe({
-    name         : 'okland:accounts-phone',
-    version      : '0.0.21',
+    name         : 'newserves:accounts-phone',
+    version      : '0.0.7',
     // Brief, one-line summary of the package.
-    summary      : 'A login service based on mobile phone number, For Meteor.',
+    summary      : '0.0.7, remove update deny in phone-server. A login service based on mobile phone number.',
     // URL to the Git repository containing the source code for this package.
-    git          : 'https://github.com/okland/accounts-phone',
+    git          : 'https://github.com/Terranly/accounts-phone',
     // By default, Meteor will default to using README.md for documentation.
     // To avoid submitting documentation, set this field to null.
     documentation: 'README.md'
@@ -17,7 +17,7 @@ Npm.depends({
 });
 
 Package.onUse(function (api) {
-    api.use('npm-bcrypt@=0.7.8_2', 'server');
+    api.use('npm-bcrypt@=0.9.2', 'server');
 
     api.use('accounts-base@1.0.2', ['client', 'server']);
     // Export Accounts (etc) to packages using this one.
@@ -40,7 +40,7 @@ Package.onUse(function (api) {
 });
 
 Package.onTest(function (api) {
-    api.use(['okland:accounts-phone', 'tinytest', 'test-helpers', 'tracker',
+    api.use(['newserves:accounts-phone', 'tinytest', 'test-helpers', 'tracker',
         'accounts-base', 'random', 'underscore', 'check',
         'ddp']);
     api.addFiles('phone_tests_setup.js', 'server');
